@@ -59,7 +59,7 @@ public class Humbug extends JavaPlugin implements Listener {
   // ================================================
   // Villager
 
-  @EventHandler
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
     if (event.isCancelled()) {
       return;
@@ -74,7 +74,7 @@ public class Humbug extends JavaPlugin implements Listener {
   // ================================================
   // Anvil and Ender Chest
 
-  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onPlayerInteract(PlayerInteractEvent event) {
     if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
       Material material = event.getClickedBlock().getType();
@@ -88,7 +88,7 @@ public class Humbug extends JavaPlugin implements Listener {
   // ================================================
   // Wither
 
-  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onEntityChangeBlock(EntityChangeBlockEvent event) {
     EntityType npc_type = event.getEntity().getType();
     if (!wither_insta_break_enabled_ &&
@@ -97,7 +97,7 @@ public class Humbug extends JavaPlugin implements Listener {
     }
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onEntityExplode(EntityExplodeEvent event) {
     boolean leave_blocks_intact = false;
     EntityType npc_type = event.getEntity().getType();
@@ -108,7 +108,7 @@ public class Humbug extends JavaPlugin implements Listener {
     }
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onCreatureSpawn(CreatureSpawnEvent event) {
     if (!event.getEntityType().equals(EntityType.WITHER)) {
       return;
