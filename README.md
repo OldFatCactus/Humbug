@@ -15,18 +15,14 @@ Config file settings:
 - ender_chest: Boolean, Turns on ender chest use
 - villager_trades: Boolean, Turns on villager trades
 - wither: Boolean, Turns on the wither
-- wither_explosions: Boolean, Turns on wither explosions destroying blocks
-- - Wither/Wither Skull explosions will always occur to damage players,
-    this only effects block breakage.
+- wither_explosions: Boolean, Turns on wither explosions destroying blocks. Wither/Wither Skull explosions will always occur to damage players, this only effects block breakage.
 - wither_insta_break: Boolean, Turns on the wither insta-break ability
 
 Default configuration:
-`
-    debug: false
-    anvil: false
-    ender_chest: false
-    villager_trades: false
-    wither: true
-    wither_explosions: false
-    wither_insta_break: false
-`
+debug: false
+anvil: false
+ender_chest: false
+villager_trades: false
+wither: true
+wither_explosions: false
+wither_insta_break: false
