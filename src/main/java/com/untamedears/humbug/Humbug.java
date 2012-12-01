@@ -65,6 +65,9 @@ public class Humbug extends JavaPlugin implements Listener {
       return;
     }
     Entity npc = event.getRightClicked();
+    if (npc == null) {
+        return;
+    }
     if (!villager_trades_enabled_ &&
         npc.getType() == EntityType.VILLAGER) {
       event.setCancelled(true);
@@ -90,7 +93,11 @@ public class Humbug extends JavaPlugin implements Listener {
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onEntityChangeBlock(EntityChangeBlockEvent event) {
-    EntityType npc_type = event.getEntity().getType();
+    Entity npc = event.getEntity();
+    if (npc == null) {
+        return;
+    }
+    EntityType npc_type = npc.getType();
     if (!wither_insta_break_enabled_ &&
         npc_type.equals(EntityType.WITHER)) {
       event.setCancelled(true);
@@ -100,7 +107,11 @@ public class Humbug extends JavaPlugin implements Listener {
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onEntityExplode(EntityExplodeEvent event) {
     boolean leave_blocks_intact = false;
-    EntityType npc_type = event.getEntity().getType();
+    Entity npc = event.getEntity();
+    if (npc == null) {
+        return;
+    }
+    EntityType npc_type = npc.getType();
     if (!wither_explosions_enabled_ &&
         (npc_type.equals(EntityType.WITHER) ||
          npc_type.equals(EntityType.WITHER_SKULL))) {
