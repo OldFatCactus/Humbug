@@ -8,6 +8,8 @@ Minecraft server plug-in: Simply disables various functionality
 - Disables Villager trading.
 - Disables Wither block destruction radius.
 - Disables Wither and Wither Skull explosions.
+- Removes the Enchanted Golden Apple recipe.
+- Converts Enchanted Golden Apples to normal Golden Apples if a Player attempts to eat them.
 
 Config file settings:
 - debug: Boolean, Turns on debug logging (currently there is none)
@@ -17,12 +19,16 @@ Config file settings:
 - wither: Boolean, Turns on the wither
 - wither_explosions: Boolean, Turns on wither explosions destroying blocks. Wither/Wither Skull explosions will always occur to damage players, this only effects block breakage.
 - wither_insta_break: Boolean, Turns on the wither insta-break ability
+- ench_gold_app_edible: Boolean, Allows players to eat Enchanted Golden Apples. If false, Enchanted Golden Apples are converted to normal Golden Apples
+- ench_gold_app_craftable: Boolean, Allows the Enchanted Golden Apple recipe to be used
 
 Default configuration:
-debug: false
-anvil: false
-ender_chest: false
-villager_trades: false
-wither: true
-wither_explosions: false
-wither_insta_break: false
+- debug: false
+- anvil: false
+- ender_chest: false
+- villager_trades: false
+- wither: true
+- wither_explosions: false
+- wither_insta_break: false
+- ench_gold_app_edible: false
+- ench_gold_app_craftable: false
