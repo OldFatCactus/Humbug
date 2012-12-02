@@ -172,6 +172,8 @@ public class Humbug extends JavaPlugin implements Listener {
   // Enchanted Golden Apple
 
   public boolean isEnchantedGoldenApple(ItemStack item) {
+    // Golden Apples are GOLDEN_APPLE with 0 durability
+    // Enchanted Golden Apples are GOLDEN_APPLE with 1 durability
     if (item == null) {
       return false;
     }
@@ -198,8 +200,26 @@ public class Humbug extends JavaPlugin implements Listener {
     item.setAmount(stack_size);
   }
 
+  public void removeEnchantedGoldenAppleRecipe() {
+    if (ench_gold_app_craftable_) {
+      return;
+    }
+    Iterator<Recipe> it = getServer().recipeIterator();
+    while (it.hasNext()) {
+      Recipe recipe = it.next();
+      ItemStack resulting_item = recipe.getResult();
+      if (isEnchantedGoldenApple(resulting_item)) {
+        it.remove();
+        info("Enchanted Golden Apple Recipe disabled");
+        break;
+      }
+    }
+  }
+
   @EventHandler(priority = EventPriority.LOWEST)
   public void onPlayerInteractAll(PlayerInteractEvent event) {
+    // The event when eating is cancelled before even LOWEST fires when the
+    //  player clicks on AIR.
     if (ench_gold_app_edible_) {
       return;
     }
@@ -209,89 +229,6 @@ public class Humbug extends JavaPlugin implements Listener {
     replaceEnchantedGoldenApple(
         player.getName(), item, inventory.getMaxStackSize());
   }
-
-  /*
-  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-  public void onPlayerJoin(PlayerJoinEvent event) {
-    if (ench_gold_app_edible_) {
-      return;
-    }
-    Player player = event.getPlayer();
-    Inventory inventory = player.getInventory();
-    int size = inventory.getSize();
-    for (int i = 0; i < size; ++i) {
-      ItemStack item = inventory.getItem(i);
-      replaceEnchantedGoldenApple(
-          player.getName(), item, inventory.getMaxStackSize());
-    }
-  }
-
-  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-  public void onPlayerItemHeld(PlayerItemHeldEvent event) {
-    if (ench_gold_app_edible_) {
-      return;
-    }
-    int slot = event.getNewSlot();
-    Player player = event.getPlayer();
-    Inventory inventory = player.getInventory();
-    ItemStack item = inventory.getItem(slot);
-    replaceEnchantedGoldenApple(
-        player.getName(), item, inventory.getMaxStackSize());
-  }
-
-  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-  public void onInventoryClick(InventoryClickEvent event) {
-    if (ench_gold_app_edible_) {
-      return;
-    }
-    HumanEntity player = event.getWhoClicked();
-    Inventory inventory = player.getInventory();
-    ItemStack item = event.getCursor();
-    if (item != null && isEnchantedGoldenApple(item)) {
-      replaceEnchantedGoldenApple(
-          player.getName(), item, inventory.getMaxStackSize());
-    }
-    item = event.getCurrentItem();
-    if (item != null && isEnchantedGoldenApple(item)) {
-      replaceEnchantedGoldenApple(
-          player.getName(), item, inventory.getMaxStackSize());
-    }
-  }
-
-  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-  public void onPrepareItemCraft(PrepareItemCraftEvent event) {
-    if (ench_gold_app_craftable_) {
-      return;
-    }
-    info(String.format("precraft %s", event)); //XXX
-    Recipe recipe = event.getRecipe();
-    if (recipe == null) {
-      return;
-    }
-    info(String.format("recipe %s", recipe)); //XXX
-    ItemStack resulting_items = recipe.getResult();
-    if (resulting_items == null) {
-      return;
-    }
-    // Golden Apples are GOLDEN_APPLE with 0 durability
-    // Enchanted Golden Apples are GOLDEN_APPLE with 1 durability
-    if (resulting_items.getDurability() != 1) {
-      return;
-    }
-    if (!resulting_items.getType().equals(Material.GOLDEN_APPLE)) {
-      return;
-    }
-    info(String.format("items %s", resulting_items)); //XXX
-    int stack_size = max_golden_apple_stack_;
-    int inventory_stack_size = event.getInventory().getMaxStackSize();
-    if (inventory_stack_size < max_golden_apple_stack_) {
-      stack_size = inventory_stack_size;
-    }
-    resulting_items.setDurability((short)0);
-    resulting_items.setAmount(stack_size);
-    info(String.format("new items %s", resulting_items)); //XXX
-  }
-  */
 
   // ================================================
   // General
@@ -334,23 +271,5 @@ public class Humbug extends JavaPlugin implements Listener {
         "ench_gold_app_edible", ench_gold_app_edible_);
     ench_gold_app_craftable_ = config.getBoolean(
         "ench_gold_app_craftable", ench_gold_app_craftable_);
-  }
-
-  public void removeEnchantedGoldenAppleRecipe() {
-    Iterator<Recipe> it = getServer().recipeIterator();
-    while (it.hasNext()) {
-      Recipe recipe = it.next();
-      ItemStack resulting_item = recipe.getResult();
-      // Golden Apples are GOLDEN_APPLE with 0 durability
-      // Enchanted Golden Apples are GOLDEN_APPLE with 1 durability
-      if (resulting_item.getDurability() != 1) {
-        continue;
-      }
-      if (!resulting_item.getType().equals(Material.GOLDEN_APPLE)) {
-        continue;
-      }
-      it.remove();
-      break;
-    }
   }
 }
