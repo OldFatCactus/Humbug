@@ -1,5 +1,6 @@
 package com.untamedears.humbug;
 
+import java.util.Iterator;
 import java.util.logging.Logger;
 
 import org.bukkit.Material;
@@ -8,6 +9,8 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.HumanEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -16,8 +19,17 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityInteractEvent;
+import org.bukkit.event.entity.FoodLevelChangeEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Recipe;
+import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -46,6 +58,11 @@ public class Humbug extends JavaPlugin implements Listener {
 
   private static final Logger log_ = Logger.getLogger("Humbug");
   private static Humbug plugin_ = null;
+  private static int max_golden_apple_stack_ = 1;
+
+  // ================================================
+  // Configuration
+
   private static boolean debug_log_ = false;
   private static boolean anvil_enabled_ = false;
   private static boolean ender_chest_enabled_ = false;
@@ -53,67 +70,88 @@ public class Humbug extends JavaPlugin implements Listener {
   private static boolean wither_enabled_ = true;
   private static boolean wither_explosions_enabled_ = false;
   private static boolean wither_insta_break_enabled_ = false;
+  // For Enchanted GOLDEN_APPLES
+  private static boolean ench_gold_app_edible_ = false;
+  private static boolean ench_gold_app_craftable_ = false;
+
+  static {
+    max_golden_apple_stack_ = Material.GOLDEN_APPLE.getMaxStackSize();
+    if (max_golden_apple_stack_ > 64) {
+      max_golden_apple_stack_ = 64;
+    }
+  }
 
   public Humbug() {}
 
   // ================================================
-  // Villager
+  // Villager Trading
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
-    if (event.isCancelled()) {
+    if (villager_trades_enabled_) {
       return;
     }
     Entity npc = event.getRightClicked();
     if (npc == null) {
         return;
     }
-    if (!villager_trades_enabled_ &&
-        npc.getType() == EntityType.VILLAGER) {
+    if (npc.getType() == EntityType.VILLAGER) {
       event.setCancelled(true);
     }
   }
 
   // ================================================
-  // Anvil and Ender Chest
+  // Anvil and Ender Chest usage
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onPlayerInteract(PlayerInteractEvent event) {
-    if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-      Material material = event.getClickedBlock().getType();
-      if ((!anvil_enabled_ && material.equals(Material.ANVIL)) ||
-          (!ender_chest_enabled_ && material.equals(Material.ENDER_CHEST))) {
-        event.setCancelled(true);
-      }
+    if (anvil_enabled_ &&
+        ender_chest_enabled_) {
+      return;
+    }
+    Action action = event.getAction();
+    Material material = event.getClickedBlock().getType();
+    boolean anvil = !anvil_enabled_ &&
+                    action == Action.RIGHT_CLICK_BLOCK &&
+                    material.equals(Material.ANVIL);
+    boolean ender_chest = !ender_chest_enabled_ &&
+                          action == Action.RIGHT_CLICK_BLOCK &&
+                          material.equals(Material.ENDER_CHEST);
+    if (anvil || ender_chest) {
+      event.setCancelled(true);
     }
   }
 
   // ================================================
-  // Wither
+  // Wither Insta-breaking and Explosions
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onEntityChangeBlock(EntityChangeBlockEvent event) {
+    if (wither_insta_break_enabled_) {
+      return;
+    }
     Entity npc = event.getEntity();
     if (npc == null) {
         return;
     }
     EntityType npc_type = npc.getType();
-    if (!wither_insta_break_enabled_ &&
-        npc_type.equals(EntityType.WITHER)) {
+    if (npc_type.equals(EntityType.WITHER)) {
       event.setCancelled(true);
     }
   }
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onEntityExplode(EntityExplodeEvent event) {
+    if (wither_explosions_enabled_) {
+      return;
+    }
     boolean leave_blocks_intact = false;
     Entity npc = event.getEntity();
     if (npc == null) {
         return;
     }
     EntityType npc_type = npc.getType();
-    if (!wither_explosions_enabled_ &&
-        (npc_type.equals(EntityType.WITHER) ||
+    if ((npc_type.equals(EntityType.WITHER) ||
          npc_type.equals(EntityType.WITHER_SKULL))) {
       event.blockList().clear();
     }
@@ -121,13 +159,139 @@ public class Humbug extends JavaPlugin implements Listener {
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onCreatureSpawn(CreatureSpawnEvent event) {
+    if (wither_enabled_) {
+      return;
+    }
     if (!event.getEntityType().equals(EntityType.WITHER)) {
       return;
     }
-    if (!wither_enabled_) {
-      event.setCancelled(true);
+    event.setCancelled(true);
+  }
+
+  // ================================================
+  // Enchanted Golden Apple
+
+  public boolean isEnchantedGoldenApple(ItemStack item) {
+    if (item == null) {
+      return false;
+    }
+    if (item.getDurability() != 1) {
+      return false;
+    }
+    Material material = item.getType();
+    return material.equals(Material.GOLDEN_APPLE);
+  }
+
+  public void replaceEnchantedGoldenApple(
+      String player_name, ItemStack item, int inventory_max_stack_size) {
+    if (!isEnchantedGoldenApple(item)) {
+      return;
+    }
+    int stack_size = max_golden_apple_stack_;
+    if (inventory_max_stack_size < max_golden_apple_stack_) {
+      stack_size = inventory_max_stack_size;
+    }
+    info(String.format(
+          "Replaced %d Enchanted with %d Normal Golden Apples for %s",
+          item.getAmount(), stack_size, player_name));
+    item.setDurability((short)0);
+    item.setAmount(stack_size);
+  }
+
+  @EventHandler(priority = EventPriority.LOWEST)
+  public void onPlayerInteractAll(PlayerInteractEvent event) {
+    if (ench_gold_app_edible_) {
+      return;
+    }
+    Player player = event.getPlayer();
+    Inventory inventory = player.getInventory();
+    ItemStack item = event.getItem();
+    replaceEnchantedGoldenApple(
+        player.getName(), item, inventory.getMaxStackSize());
+  }
+
+  /*
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onPlayerJoin(PlayerJoinEvent event) {
+    if (ench_gold_app_edible_) {
+      return;
+    }
+    Player player = event.getPlayer();
+    Inventory inventory = player.getInventory();
+    int size = inventory.getSize();
+    for (int i = 0; i < size; ++i) {
+      ItemStack item = inventory.getItem(i);
+      replaceEnchantedGoldenApple(
+          player.getName(), item, inventory.getMaxStackSize());
     }
   }
+
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onPlayerItemHeld(PlayerItemHeldEvent event) {
+    if (ench_gold_app_edible_) {
+      return;
+    }
+    int slot = event.getNewSlot();
+    Player player = event.getPlayer();
+    Inventory inventory = player.getInventory();
+    ItemStack item = inventory.getItem(slot);
+    replaceEnchantedGoldenApple(
+        player.getName(), item, inventory.getMaxStackSize());
+  }
+
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onInventoryClick(InventoryClickEvent event) {
+    if (ench_gold_app_edible_) {
+      return;
+    }
+    HumanEntity player = event.getWhoClicked();
+    Inventory inventory = player.getInventory();
+    ItemStack item = event.getCursor();
+    if (item != null && isEnchantedGoldenApple(item)) {
+      replaceEnchantedGoldenApple(
+          player.getName(), item, inventory.getMaxStackSize());
+    }
+    item = event.getCurrentItem();
+    if (item != null && isEnchantedGoldenApple(item)) {
+      replaceEnchantedGoldenApple(
+          player.getName(), item, inventory.getMaxStackSize());
+    }
+  }
+
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onPrepareItemCraft(PrepareItemCraftEvent event) {
+    if (ench_gold_app_craftable_) {
+      return;
+    }
+    info(String.format("precraft %s", event)); //XXX
+    Recipe recipe = event.getRecipe();
+    if (recipe == null) {
+      return;
+    }
+    info(String.format("recipe %s", recipe)); //XXX
+    ItemStack resulting_items = recipe.getResult();
+    if (resulting_items == null) {
+      return;
+    }
+    // Golden Apples are GOLDEN_APPLE with 0 durability
+    // Enchanted Golden Apples are GOLDEN_APPLE with 1 durability
+    if (resulting_items.getDurability() != 1) {
+      return;
+    }
+    if (!resulting_items.getType().equals(Material.GOLDEN_APPLE)) {
+      return;
+    }
+    info(String.format("items %s", resulting_items)); //XXX
+    int stack_size = max_golden_apple_stack_;
+    int inventory_stack_size = event.getInventory().getMaxStackSize();
+    if (inventory_stack_size < max_golden_apple_stack_) {
+      stack_size = inventory_stack_size;
+    }
+    resulting_items.setDurability((short)0);
+    resulting_items.setAmount(stack_size);
+    info(String.format("new items %s", resulting_items)); //XXX
+  }
+  */
 
   // ================================================
   // General
@@ -135,6 +299,7 @@ public class Humbug extends JavaPlugin implements Listener {
   public void onEnable() {
     registerEvents();
     loadConfiguration();
+    removeEnchantedGoldenAppleRecipe();
     plugin_ = this;
     info("Enabled");
   }
@@ -165,5 +330,27 @@ public class Humbug extends JavaPlugin implements Listener {
         "wither_explosions", wither_explosions_enabled_);
     wither_insta_break_enabled_ = config.getBoolean(
         "wither_insta_break", wither_insta_break_enabled_);
+    ench_gold_app_edible_ = config.getBoolean(
+        "ench_gold_app_edible", ench_gold_app_edible_);
+    ench_gold_app_craftable_ = config.getBoolean(
+        "ench_gold_app_craftable", ench_gold_app_craftable_);
+  }
+
+  public void removeEnchantedGoldenAppleRecipe() {
+    Iterator<Recipe> it = getServer().recipeIterator();
+    while (it.hasNext()) {
+      Recipe recipe = it.next();
+      ItemStack resulting_item = recipe.getResult();
+      // Golden Apples are GOLDEN_APPLE with 0 durability
+      // Enchanted Golden Apples are GOLDEN_APPLE with 1 durability
+      if (resulting_item.getDurability() != 1) {
+        continue;
+      }
+      if (!resulting_item.getType().equals(Material.GOLDEN_APPLE)) {
+        continue;
+      }
+      it.remove();
+      break;
+    }
   }
 }
