@@ -236,7 +236,7 @@ public class Humbug extends JavaPlugin implements Listener {
   // ================================================
   // Stop Cobble generation from lava+water
 
-  private final BlockFace[] water_faces_ = new BlockFace[] {
+  private final BlockFace[] faces_ = new BlockFace[] {
       BlockFace.NORTH,
       BlockFace.SOUTH,
       BlockFace.EAST,
@@ -247,7 +247,7 @@ public class Humbug extends JavaPlugin implements Listener {
 
 
   private BlockFace WaterAdjacentLava(Block lava_block) {
-    for (BlockFace face : water_faces_) {
+    for (BlockFace face : faces_) {
       Block block = lava_block.getRelative(face);
       Material material = block.getType();
       if (material.equals(Material.WATER) ||
@@ -258,12 +258,7 @@ public class Humbug extends JavaPlugin implements Listener {
     return BlockFace.SELF;
   }
 
-  @EventHandler(priority = EventPriority.LOWEST)
-  public void onBlockPhysicsEvent(BlockPhysicsEvent event) {
-    if (cobble_from_lava_enabled_) {
-      return;
-    }
-    Block block = event.getBlock();
+  public void ConvertLava(Block block) {
     int data = (int)block.getData();
     if (data == 0) {
       return;
@@ -278,6 +273,26 @@ public class Humbug extends JavaPlugin implements Listener {
       return;
     }
     block.setType(Material.AIR);
+  }
+
+  public void LavaAreaCheck(Block block, int ttl) {
+    ConvertLava(block);
+    if (ttl <= 0) {
+      return;
+    }
+    for (BlockFace face : faces_) {
+      Block child = block.getRelative(face);
+      LavaAreaCheck(child, ttl - 1);
+    }
+  }
+
+  @EventHandler(priority = EventPriority.LOWEST)
+  public void onBlockPhysicsEvent(BlockPhysicsEvent event) {
+    if (cobble_from_lava_enabled_) {
+      return;
+    }
+    Block block = event.getBlock();
+    LavaAreaCheck(block, 1);
   }
 
   // ================================================
@@ -322,6 +337,6 @@ public class Humbug extends JavaPlugin implements Listener {
     ench_gold_app_craftable_ = config.getBoolean(
         "ench_gold_app_craftable", ench_gold_app_craftable_);
     cobble_from_lava_enabled_ = config.getBoolean(
-        "cobble_from_lava_enabled", cobble_from_lava_enabled_);
+        "cobble_from_lava", cobble_from_lava_enabled_);
   }
 }
