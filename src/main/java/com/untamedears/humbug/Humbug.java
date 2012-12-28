@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Entity;
@@ -15,6 +16,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
@@ -70,6 +72,7 @@ public class Humbug extends JavaPlugin implements Listener {
   private static boolean wither_enabled_ = true;
   private static boolean wither_explosions_enabled_ = false;
   private static boolean wither_insta_break_enabled_ = false;
+  private static boolean cobble_from_lava_enabled_ = false;
   // For Enchanted GOLDEN_APPLES
   private static boolean ench_gold_app_edible_ = false;
   private static boolean ench_gold_app_craftable_ = false;
@@ -231,6 +234,53 @@ public class Humbug extends JavaPlugin implements Listener {
   }
 
   // ================================================
+  // Stop Cobble generation from lava+water
+
+  private final BlockFace[] water_faces_ = new BlockFace[] {
+      BlockFace.NORTH,
+      BlockFace.SOUTH,
+      BlockFace.EAST,
+      BlockFace.WEST,
+      BlockFace.UP,
+      BlockFace.DOWN
+    };
+
+
+  private BlockFace WaterAdjacentLava(Block lava_block) {
+    for (BlockFace face : water_faces_) {
+      Block block = lava_block.getRelative(face);
+      Material material = block.getType();
+      if (material.equals(Material.WATER) ||
+          material.equals(Material.STATIONARY_WATER)) {
+        return face;
+      }
+    }
+    return BlockFace.SELF;
+  }
+
+  @EventHandler(priority = EventPriority.LOWEST)
+  public void onBlockPhysicsEvent(BlockPhysicsEvent event) {
+    if (cobble_from_lava_enabled_) {
+      return;
+    }
+    Block block = event.getBlock();
+    int data = (int)block.getData();
+    if (data == 0) {
+      return;
+    }
+    Material material = block.getType();
+    if (!material.equals(Material.LAVA) &&
+        !material.equals(Material.STATIONARY_LAVA)) {
+      return;
+    }
+    BlockFace face = WaterAdjacentLava(block);
+    if (face == BlockFace.SELF) {
+      return;
+    }
+    block.setType(Material.AIR);
+  }
+
+  // ================================================
   // General
 
   public void onEnable() {
@@ -271,5 +321,7 @@ public class Humbug extends JavaPlugin implements Listener {
         "ench_gold_app_edible", ench_gold_app_edible_);
     ench_gold_app_craftable_ = config.getBoolean(
         "ench_gold_app_craftable", ench_gold_app_craftable_);
+    cobble_from_lava_enabled_ = config.getBoolean(
+        "cobble_from_lava_enabled", cobble_from_lava_enabled_);
   }
 }
