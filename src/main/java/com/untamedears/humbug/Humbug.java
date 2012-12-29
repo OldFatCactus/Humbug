@@ -17,6 +17,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockPhysicsEvent;
+import org.bukkit.event.enchantment.EnchantItemEvent;
+import org.bukkit.event.enchantment.PrepareItemEnchantEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
@@ -73,6 +75,7 @@ public class Humbug extends JavaPlugin implements Listener {
   private static boolean wither_explosions_enabled_ = false;
   private static boolean wither_insta_break_enabled_ = false;
   private static boolean cobble_from_lava_enabled_ = false;
+  private static boolean ench_book_craftable_ = false;
   // For Enchanted GOLDEN_APPLES
   private static boolean ench_gold_app_edible_ = false;
   private static boolean ench_gold_app_craftable_ = false;
@@ -203,7 +206,7 @@ public class Humbug extends JavaPlugin implements Listener {
     item.setAmount(stack_size);
   }
 
-  public void removeEnchantedGoldenAppleRecipe() {
+  public void removeRecipies() {
     if (ench_gold_app_craftable_) {
       return;
     }
@@ -211,15 +214,15 @@ public class Humbug extends JavaPlugin implements Listener {
     while (it.hasNext()) {
       Recipe recipe = it.next();
       ItemStack resulting_item = recipe.getResult();
-      if (isEnchantedGoldenApple(resulting_item)) {
+      if ( // !ench_gold_app_craftable_ &&
+          isEnchantedGoldenApple(resulting_item)) {
         it.remove();
         info("Enchanted Golden Apple Recipe disabled");
-        break;
       }
     }
   }
 
-  @EventHandler(priority = EventPriority.LOWEST)
+  @EventHandler(priority = EventPriority.LOWEST) // ignoreCancelled=false
   public void onPlayerInteractAll(PlayerInteractEvent event) {
     // The event when eating is cancelled before even LOWEST fires when the
     //  player clicks on AIR.
@@ -231,6 +234,43 @@ public class Humbug extends JavaPlugin implements Listener {
     ItemStack item = event.getItem();
     replaceEnchantedGoldenApple(
         player.getName(), item, inventory.getMaxStackSize());
+  }
+
+  // ================================================
+  // Enchanted Book
+
+  public boolean isNormalBook(ItemStack item) {
+    if (item == null) {
+      return false;
+    }
+    Material material = item.getType();
+    return material.equals(Material.BOOK);
+  }
+
+  @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled=true)
+  public void onPrepareItemEnchantEvent(PrepareItemEnchantEvent event) {
+    if (ench_book_craftable_) {
+        return;
+    }
+    ItemStack item = event.getItem();
+    if (isNormalBook(item)) {
+      event.setCancelled(true);
+    }
+  }
+
+  @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled=true)
+  public void onEnchantItemEvent(EnchantItemEvent event) {
+    if (ench_book_craftable_) {
+        return;
+    }
+    ItemStack item = event.getItem();
+    if (isNormalBook(item)) {
+      event.setCancelled(true);
+      Player player = event.getEnchanter();
+      warning(
+          "Prevented book enchant. This should not trigger. Watch player " +
+          player.getName());
+    }
   }
 
   // ================================================
@@ -301,7 +341,7 @@ public class Humbug extends JavaPlugin implements Listener {
   public void onEnable() {
     registerEvents();
     loadConfiguration();
-    removeEnchantedGoldenAppleRecipe();
+    removeRecipies();
     plugin_ = this;
     info("Enabled");
   }
@@ -338,5 +378,7 @@ public class Humbug extends JavaPlugin implements Listener {
         "ench_gold_app_craftable", ench_gold_app_craftable_);
     cobble_from_lava_enabled_ = config.getBoolean(
         "cobble_from_lava", cobble_from_lava_enabled_);
+    ench_book_craftable_ = config.getBoolean(
+        "ench_book_craftable", ench_book_craftable_);
   }
 }
