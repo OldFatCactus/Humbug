@@ -308,11 +308,35 @@ public class Humbug extends JavaPlugin implements Listener {
         !material.equals(Material.STATIONARY_LAVA)) {
       return;
     }
+    if (isLavaSourceNear(block, 3)) {
+      return;
+    }
     BlockFace face = WaterAdjacentLava(block);
     if (face == BlockFace.SELF) {
       return;
     }
     block.setType(Material.AIR);
+  }
+
+  public boolean isLavaSourceNear(Block block, int ttl) {
+    int data = (int)block.getData();
+    if (data == 0) {
+      Material material = block.getType();
+      if (material.equals(Material.LAVA) ||
+          material.equals(Material.STATIONARY_LAVA)) {
+        return true;
+      }
+    }
+    if (ttl <= 0) {
+      return false;
+    }
+    for (BlockFace face : faces_) {
+      Block child = block.getRelative(face);
+      if (isLavaSourceNear(child, ttl - 1)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public void LavaAreaCheck(Block block, int ttl) {
