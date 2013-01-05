@@ -8,6 +8,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Damageable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.HumanEntity;
@@ -22,13 +23,8 @@ import org.bukkit.event.enchantment.PrepareItemEnchantEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.entity.EntityInteractEvent;
-import org.bukkit.event.entity.FoodLevelChangeEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -76,6 +72,7 @@ public class Humbug extends JavaPlugin implements Listener {
   private static boolean wither_insta_break_enabled_ = false;
   private static boolean cobble_from_lava_enabled_ = false;
   private static boolean ench_book_craftable_ = false;
+  private static int player_max_health_ = 20;
   // For Enchanted GOLDEN_APPLES
   private static boolean ench_gold_app_edible_ = false;
   private static boolean ench_gold_app_craftable_ = false;
@@ -276,7 +273,7 @@ public class Humbug extends JavaPlugin implements Listener {
   // ================================================
   // Stop Cobble generation from lava+water
 
-  private final BlockFace[] faces_ = new BlockFace[] {
+  private static final BlockFace[] faces_ = new BlockFace[] {
       BlockFace.NORTH,
       BlockFace.SOUTH,
       BlockFace.EAST,
@@ -360,6 +357,15 @@ public class Humbug extends JavaPlugin implements Listener {
   }
 
   // ================================================
+  // Adjust player max health
+
+  @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled=true)
+  public void onPlayerJoinEvent(PlayerJoinEvent event) {
+    Player player = event.getPlayer();
+    player.setMaxHealth(player_max_health_);
+  }
+
+  // ================================================
   // General
 
   public void onEnable() {
@@ -404,5 +410,7 @@ public class Humbug extends JavaPlugin implements Listener {
         "cobble_from_lava", cobble_from_lava_enabled_);
     ench_book_craftable_ = config.getBoolean(
         "ench_book_craftable", ench_book_craftable_);
+	player_max_health_ = config.getInt(
+        "player_max_health", player_max_health_);
   }
 }
