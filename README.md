@@ -9,6 +9,7 @@ Minecraft server plug-in: Simply disables various functionality
 - Disables Wither block destruction radius.
 - Disables Wither and Wither Skull explosions.
 - Disables cobblestone generation from lava and water.
+- Makes the Protection enchantment a little stronger
 - Enables adjustment of all Player maximum health
 - Removes the Enchanted Book recipe.
 - Removes the Enchanted Golden Apple recipe.
@@ -24,6 +25,7 @@ Config file settings:
 - wither_insta_break: Boolean, Turns on the wither insta-break ability
 - cobble_from_lava: Boolean, Turns on cobblestone generation when lava and water mix
 - ench_book_craftable: Boolean, Allows the Enchanted Book recipe to be used
+- scale_protection_enchant: Boolean, Increases damage reduction granted by the Protection enchantment
 - player_max_health: Integer, sets all Player maximum health
 - ench_gold_app_edible: Boolean, Allows players to eat Enchanted Golden Apples. If false, Enchanted Golden Apples are converted to normal Golden Apples
 - ench_gold_app_craftable: Boolean, Allows the Enchanted Golden Apple recipe to be used
@@ -38,6 +40,7 @@ Default configuration:
 - wither_insta_break: false
 - cobble_from_lava: false
 - ench_book_craftable: false
+- scale_protection_enchant: true
 - player_max_health: 20
 - ench_gold_app_edible: false
 - ench_gold_app_craftable: false

@@ -8,6 +8,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Damageable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -22,12 +23,15 @@ import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.enchantment.PrepareItemEnchantEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.PluginManager;
@@ -72,6 +76,7 @@ public class Humbug extends JavaPlugin implements Listener {
   private static boolean wither_insta_break_enabled_ = false;
   private static boolean cobble_from_lava_enabled_ = false;
   private static boolean ench_book_craftable_ = false;
+  private static boolean scale_protection_enchant_ = true;
   private static int player_max_health_ = 20;
   // For Enchanted GOLDEN_APPLES
   private static boolean ench_gold_app_edible_ = false;
@@ -357,7 +362,36 @@ public class Humbug extends JavaPlugin implements Listener {
   }
 
   // ================================================
-  // Adjust player max health
+  // Counteract 1.4.6 protection enchant nerf
+
+  @EventHandler(priority = EventPriority.LOWEST) // ignoreCancelled=false
+  public void onEntityDamageByEntityEvent(EntityDamageByEntityEvent event) {
+    if (!scale_protection_enchant_) {
+        return;
+    }
+    int damage = event.getDamage();
+    if (damage <= 0) {
+      return;
+    }
+    DamageCause cause = event.getCause();
+    if (!cause.equals(DamageCause.ENTITY_ATTACK) &&
+            !cause.equals(DamageCause.PROJECTILE)) {
+        return;
+    }
+    Entity entity = event.getEntity();
+    if (!(entity instanceof Player)) {
+      return;
+    }
+    Player defender = (Player)entity;
+    PlayerInventory inventory = defender.getInventory();
+    int enchant_level = 0;
+    for (ItemStack armor : inventory.getArmorContents()) {
+      enchant_level += armor.getEnchantmentLevel(Enchantment.PROTECTION_ENVIRONMENTAL);
+    }
+    double damage_adjustment = (double)enchant_level * 0.125 + 0.0001;
+    damage = Math.max(damage - (int)damage_adjustment, 0);
+    event.setDamage(damage);
+  }
 
   @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled=true)
   public void onPlayerJoinEvent(PlayerJoinEvent event) {
@@ -410,6 +444,8 @@ public class Humbug extends JavaPlugin implements Listener {
         "cobble_from_lava", cobble_from_lava_enabled_);
     ench_book_craftable_ = config.getBoolean(
         "ench_book_craftable", ench_book_craftable_);
+    scale_protection_enchant_ = config.getBoolean(
+        "scale_protection_enchant", scale_protection_enchant_);
 	player_max_health_ = config.getInt(
         "player_max_health", player_max_health_);
   }
