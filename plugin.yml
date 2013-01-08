@@ -1,6 +1,15 @@
 name: Humbug
 main: com.untamedears.humbug.Humbug
-version: 1.0.5
+version: 1.1.0
 description: Disables new functionality until it can be properly delt with
 author: erocs
 database: false
+commands:
+  humbug:
+    description: Gets and sets Humbugs settings
+    usage: /humbug <setting> [<value>]
+    permission: humbug.console
+permissions:
+  humbug.console:
+    description: Console commands for Humbug
+    default: false

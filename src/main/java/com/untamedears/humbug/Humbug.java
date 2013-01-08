@@ -1,13 +1,15 @@
 package com.untamedears.humbug;
 
 import java.util.Iterator;
+import java.util.Random;
 import java.util.logging.Logger;
 
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Damageable;
 import org.bukkit.entity.Entity;
@@ -37,6 +39,8 @@ import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import com.untamedears.humbug.Config;
+
 public class Humbug extends JavaPlugin implements Listener {
   public static void severe(String message) {
     log_.severe("[Humbug] " + message);
@@ -51,36 +55,19 @@ public class Humbug extends JavaPlugin implements Listener {
   }
 
   public static void debug(String message) {
-    if (debug_log_) {
+    if (config_.getDebug()) {
       log_.info("[Humbug] " + message);
     }
   }
 
   public static Humbug getPlugin() {
-    return plugin_;
+    return global_instance_;
   }
 
   private static final Logger log_ = Logger.getLogger("Humbug");
-  private static Humbug plugin_ = null;
+  private static Humbug global_instance_ = null;
+  private static Config config_ = null;
   private static int max_golden_apple_stack_ = 1;
-
-  // ================================================
-  // Configuration
-
-  private static boolean debug_log_ = false;
-  private static boolean anvil_enabled_ = false;
-  private static boolean ender_chest_enabled_ = false;
-  private static boolean villager_trades_enabled_ = false;
-  private static boolean wither_enabled_ = true;
-  private static boolean wither_explosions_enabled_ = false;
-  private static boolean wither_insta_break_enabled_ = false;
-  private static boolean cobble_from_lava_enabled_ = false;
-  private static boolean ench_book_craftable_ = false;
-  private static boolean scale_protection_enchant_ = true;
-  private static int player_max_health_ = 20;
-  // For Enchanted GOLDEN_APPLES
-  private static boolean ench_gold_app_edible_ = false;
-  private static boolean ench_gold_app_craftable_ = false;
 
   static {
     max_golden_apple_stack_ = Material.GOLDEN_APPLE.getMaxStackSize();
@@ -89,6 +76,8 @@ public class Humbug extends JavaPlugin implements Listener {
     }
   }
 
+  private Random prng_ = new Random();
+
   public Humbug() {}
 
   // ================================================
@@ -96,7 +85,7 @@ public class Humbug extends JavaPlugin implements Listener {
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
-    if (villager_trades_enabled_) {
+    if (config_.getVillagerTradesEnabled()) {
       return;
     }
     Entity npc = event.getRightClicked();
@@ -113,16 +102,16 @@ public class Humbug extends JavaPlugin implements Listener {
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onPlayerInteract(PlayerInteractEvent event) {
-    if (anvil_enabled_ &&
-        ender_chest_enabled_) {
+    if (config_.getAnvilEnabled() &&
+        config_.getEnderChestEnabled()) {
       return;
     }
     Action action = event.getAction();
     Material material = event.getClickedBlock().getType();
-    boolean anvil = !anvil_enabled_ &&
+    boolean anvil = !config_.getAnvilEnabled() &&
                     action == Action.RIGHT_CLICK_BLOCK &&
                     material.equals(Material.ANVIL);
-    boolean ender_chest = !ender_chest_enabled_ &&
+    boolean ender_chest = !config_.getEnderChestEnabled() &&
                           action == Action.RIGHT_CLICK_BLOCK &&
                           material.equals(Material.ENDER_CHEST);
     if (anvil || ender_chest) {
@@ -135,7 +124,7 @@ public class Humbug extends JavaPlugin implements Listener {
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onEntityChangeBlock(EntityChangeBlockEvent event) {
-    if (wither_insta_break_enabled_) {
+    if (config_.getWitherInstaBreakEnabled()) {
       return;
     }
     Entity npc = event.getEntity();
@@ -150,7 +139,7 @@ public class Humbug extends JavaPlugin implements Listener {
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onEntityExplode(EntityExplodeEvent event) {
-    if (wither_explosions_enabled_) {
+    if (config_.getWitherExplosionsEnabled()) {
       return;
     }
     boolean leave_blocks_intact = false;
@@ -167,7 +156,7 @@ public class Humbug extends JavaPlugin implements Listener {
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onCreatureSpawn(CreatureSpawnEvent event) {
-    if (wither_enabled_) {
+    if (config_.getWitherEnabled()) {
       return;
     }
     if (!event.getEntityType().equals(EntityType.WITHER)) {
@@ -209,7 +198,7 @@ public class Humbug extends JavaPlugin implements Listener {
   }
 
   public void removeRecipies() {
-    if (ench_gold_app_craftable_) {
+    if (config_.getEnchGoldAppleCraftable()) {
       return;
     }
     Iterator<Recipe> it = getServer().recipeIterator();
@@ -228,7 +217,7 @@ public class Humbug extends JavaPlugin implements Listener {
   public void onPlayerInteractAll(PlayerInteractEvent event) {
     // The event when eating is cancelled before even LOWEST fires when the
     //  player clicks on AIR.
-    if (ench_gold_app_edible_) {
+    if (config_.getEnchGoldAppleEdible()) {
       return;
     }
     Player player = event.getPlayer();
@@ -251,7 +240,7 @@ public class Humbug extends JavaPlugin implements Listener {
 
   @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled=true)
   public void onPrepareItemEnchantEvent(PrepareItemEnchantEvent event) {
-    if (ench_book_craftable_) {
+    if (config_.getEnchBookCraftable()) {
         return;
     }
     ItemStack item = event.getItem();
@@ -262,7 +251,7 @@ public class Humbug extends JavaPlugin implements Listener {
 
   @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled=true)
   public void onEnchantItemEvent(EnchantItemEvent event) {
-    if (ench_book_craftable_) {
+    if (config_.getEnchBookCraftable()) {
         return;
     }
     ItemStack item = event.getItem();
@@ -354,7 +343,7 @@ public class Humbug extends JavaPlugin implements Listener {
 
   @EventHandler(priority = EventPriority.LOWEST)
   public void onBlockPhysicsEvent(BlockPhysicsEvent event) {
-    if (cobble_from_lava_enabled_) {
+    if (config_.getCobbleFromLavaEnabled()) {
       return;
     }
     Block block = event.getBlock();
@@ -366,7 +355,7 @@ public class Humbug extends JavaPlugin implements Listener {
 
   @EventHandler(priority = EventPriority.LOWEST) // ignoreCancelled=false
   public void onEntityDamageByEntityEvent(EntityDamageByEntityEvent event) {
-    if (!scale_protection_enchant_) {
+    if (!config_.getScaleProtectionEnchant()) {
         return;
     }
     int damage = event.getDamage();
@@ -388,15 +377,28 @@ public class Humbug extends JavaPlugin implements Listener {
     for (ItemStack armor : inventory.getArmorContents()) {
       enchant_level += armor.getEnchantmentLevel(Enchantment.PROTECTION_ENVIRONMENTAL);
     }
-    double damage_adjustment = (double)enchant_level * 0.125 + 0.0001;
-    damage = Math.max(damage - (int)damage_adjustment, 0);
+    int damage_adjustment = 0;
+    if (enchant_level >= 3 && enchant_level <= 6) {
+      // 0 to 2
+      damage_adjustment = prng_.nextInt(3);
+    } else if (enchant_level >= 7 && enchant_level <= 10) {
+      // 0 to 3
+      damage_adjustment = prng_.nextInt(4);
+    } else if (enchant_level >= 11 && enchant_level <= 14) {
+      // 1 to 4
+      damage_adjustment = prng_.nextInt(4) + 1;
+    } else if (enchant_level >= 15) {
+      // 2 to 4
+      damage_adjustment = prng_.nextInt(3) + 2;
+    }
+    damage = Math.max(damage - damage_adjustment, 0);
     event.setDamage(damage);
   }
 
   @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled=true)
   public void onPlayerJoinEvent(PlayerJoinEvent event) {
     Player player = event.getPlayer();
-    player.setMaxHealth(player_max_health_);
+    player.setMaxHealth(config_.getMaxHealth());
   }
 
   // ================================================
@@ -404,14 +406,136 @@ public class Humbug extends JavaPlugin implements Listener {
 
   public void onEnable() {
     registerEvents();
+    registerCommands();
     loadConfiguration();
     removeRecipies();
-    plugin_ = this;
+    global_instance_ = this;
     info("Enabled");
   }
 
   public boolean isInitiaized() {
-    return plugin_ != null;
+    return global_instance_ != null;
+  }
+
+  public boolean toBool(String value) {
+    if (value.equals("1") || value.equalsIgnoreCase("true")) {
+      return true;
+    }
+    return false;
+  }
+
+  public int toInt(String value, int default_value) {
+    try {
+      return Integer.parseInt(value);
+    } catch(Exception e) {
+      return default_value;
+    }
+  }
+
+  public boolean onCommand(
+      CommandSender sender,
+      Command command,
+      String label,
+      String[] args) {
+    if (!(sender instanceof ConsoleCommandSender) ||
+        !command.getName().equals("humbug") ||
+        args.length < 1) {
+      return false;
+    }
+    String option = args[0];
+    String value = null;
+    boolean set = false;
+    String msg = "";
+    if (args.length > 1) {
+      value = args[1];
+      set = true;
+    }
+    if (option.equals("debug")) {
+      if (set) {
+        config_.setDebug(toBool(value));
+      }
+      msg = String.format("debug = %s", config_.getDebug());
+    } else if (option.equals("anvil")) {
+      if (set) {
+        config_.setAnvilEnabled(toBool(value));
+      }
+      msg = String.format("anvil = %s", config_.getAnvilEnabled());
+    } else if (option.equals("ender_chest")) {
+      if (set) {
+        config_.setEnderChestEnabled(toBool(value));
+      }
+      msg = String.format("ender_chest = %s", config_.getEnderChestEnabled());
+    } else if (option.equals("villager_trades")) {
+      if (set) {
+        config_.setVillagerTradesEnabled(toBool(value));
+      }
+      msg = String.format("villager_trades = %s", config_.getVillagerTradesEnabled());
+    } else if (option.equals("wither")) {
+      if (set) {
+        config_.setWitherEnabled(toBool(value));
+      }
+      msg = String.format("wither = %s", config_.getWitherEnabled());
+    } else if (option.equals("wither_explosions")) {
+      if (set) {
+        config_.setWitherExplosionsEnabled(toBool(value));
+      }
+      msg = String.format(
+          "wither_explosions = %s", config_.getWitherExplosionsEnabled());
+    } else if (option.equals("wither_insta_break")) {
+      if (set) {
+        config_.setWitherInstaBreakEnabled(toBool(value));
+      }
+      msg = String.format(
+          "wither_insta_break = %s", config_.getWitherInstaBreakEnabled());
+    } else if (option.equals("ench_gold_app_edible")) {
+      if (set) {
+        config_.setEnchGoldAppleEdible(toBool(value));
+      }
+      msg = String.format(
+          "ench_gold_app_edible = %s", config_.getEnchGoldAppleEdible());
+    } else if (option.equals("ench_gold_app_craftable")) {
+      if (set) {
+        config_.setEnchGoldAppleCraftable(toBool(value));
+      }
+      msg = String.format(
+          "ench_gold_app_craftable = %s", config_.getEnchGoldAppleCraftable());
+    } else if (option.equals("cobble_from_lava")) {
+      if (set) {
+        config_.setCobbleFromLavaEnabled(toBool(value));
+      }
+      msg = String.format("cobble_from_lava = %s", config_.getCobbleFromLavaEnabled());
+    } else if (option.equals("ench_book_craftable")) {
+      if (set) {
+        config_.setEnchBookCraftable(toBool(value));
+      }
+      msg = String.format("ench_book_craftable = %s", config_.getEnchBookCraftable());
+    } else if (option.equals("scale_protection_enchant")) {
+      if (set) {
+        config_.setScaleProtectionEnchant(toBool(value));
+      }
+      msg = String.format(
+          "scale_protection_enchant = %s", config_.getScaleProtectionEnchant());
+    } else if (option.equals("player_max_health")) {
+      if (set) {
+        config_.setMaxHealth(toInt(value, config_.getMaxHealth()));
+      }
+      msg = String.format("player_max_health = %d", config_.getMaxHealth());
+    } else if (option.equals("save")) {
+      config_.save();
+      msg = "Configuration saved";
+    } else if (option.equals("reload")) {
+      config_.reload();
+      msg = "Configuration loaded";
+    } else {
+      msg = String.format("Unknown option %s", option);
+    }
+    sender.sendMessage(msg);
+    return true;
+  }
+
+  public void registerCommands() {
+    ConsoleCommandSender console = getServer().getConsoleSender();
+    console.addAttachment(this, "humbug.console", true);
   }
 
   private void registerEvents() {
@@ -419,34 +543,6 @@ public class Humbug extends JavaPlugin implements Listener {
   }
 
   private void loadConfiguration() {
-    reloadConfig();
-    FileConfiguration config = getConfig();
-    config.options().copyDefaults(true);
-    debug_log_ = config.getBoolean(
-        "debug", false);
-    anvil_enabled_ = config.getBoolean(
-        "anvil", anvil_enabled_);
-    ender_chest_enabled_ = config.getBoolean(
-        "ender_chest", ender_chest_enabled_);
-    villager_trades_enabled_ = config.getBoolean(
-        "villager_trades", villager_trades_enabled_);
-    wither_enabled_ = config.getBoolean(
-        "wither", wither_enabled_);
-    wither_explosions_enabled_ = config.getBoolean(
-        "wither_explosions", wither_explosions_enabled_);
-    wither_insta_break_enabled_ = config.getBoolean(
-        "wither_insta_break", wither_insta_break_enabled_);
-    ench_gold_app_edible_ = config.getBoolean(
-        "ench_gold_app_edible", ench_gold_app_edible_);
-    ench_gold_app_craftable_ = config.getBoolean(
-        "ench_gold_app_craftable", ench_gold_app_craftable_);
-    cobble_from_lava_enabled_ = config.getBoolean(
-        "cobble_from_lava", cobble_from_lava_enabled_);
-    ench_book_craftable_ = config.getBoolean(
-        "ench_book_craftable", ench_book_craftable_);
-    scale_protection_enchant_ = config.getBoolean(
-        "scale_protection_enchant", scale_protection_enchant_);
-	player_max_health_ = config.getInt(
-        "player_max_health", player_max_health_);
+    config_ = Config.initialize(this);
   }
 }

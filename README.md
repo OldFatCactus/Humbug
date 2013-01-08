@@ -15,6 +15,8 @@ Minecraft server plug-in: Simply disables various functionality
 - Removes the Enchanted Golden Apple recipe.
 - Converts Enchanted Golden Apples to normal Golden Apples if a Player attempts to eat them.
 
+The 'humbug' console command can be used to get or set any of the configuration file settings while the server is running. Also available are 'humbug save' and 'humbug reload'.
+
 Config file settings:
 - debug: Boolean, Turns on debug logging (currently there is none)
 - anvil: Boolean, Turns on anvil use
